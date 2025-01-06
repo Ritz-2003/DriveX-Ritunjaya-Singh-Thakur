@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Q&A</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Document Q&A</h1>
+
+    <form id="uploadForm">
+        <label for="file">Upload an Excel file:</label>
+        <input type="file" id="file" />
+        <button type="button" onclick="uploadFile()">Upload</button>
+    </form>
+
+    <br />
+
+    <textarea id="question" placeholder="Ask a question"></textarea>
+
+    <br />
+    <button onclick="askQuestion()">Ask</button>
+
+    <div id="loading" style="display: none;">Loading...</div>
+    
+    <h3>Answer:</h3>
+    <p id="answer"></p>
+
+    <h3>Data Visualization:</h3>
+    <canvas id="myChart" width="400" height="200"></canvas>
+
+    <script>
+        $(document).ready(function () {
+            const questionSuggestions = [
+                "What is the total revenue?",
+                "How many units were sold?",
+                "What is the average sales price?",
+                "Show the top 10 customers",
+                "What is the profit margin?"
+            ];
+
+            $("#question").autocomplete({
+                source: questionSuggestions
+            });
+        });
+
+        let chart = null;
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('file');
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+            const response = await fetch("http://127.0.0.1:5000/upload", {
+                method: "POST",
+                body: formData
+            });
+            const result = await response.json();
+            alert("File uploaded!");
+            window.content = result.content;
+
+            if (result.data) {
+                const labels = result.data.labels;
+                const values = result.data.values;
+                renderChart(labels, values);
+            }
+        }
+
+        function renderChart(labels, values) {
+            if (chart) {
+                chart.destroy();
+            }
+
+            const ctx = document.getElementById('myChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Data Visualization',
+                        data: values,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        async function askQuestion() {
+            const question = document.getElementById('question').value;
+            const loading = document.getElementById('loading');
+            loading.style.display = "block"; // Show loading indicator
+
+            const response = await fetch("http://127.0.0.1:5000/ask", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question, content: window.content })
+            });
+
+            const result = await response.json();
+            document.getElementById('answer').innerText = result.answer || result.error;
+
+            loading.style.display = "none"; // Hide loading indicator
+        }
+    </script>
+</body>
+</html>
